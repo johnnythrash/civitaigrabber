@@ -1,0 +1,23 @@
+{
+  "name": "civitaiscrape",
+  "version": "1.0.0",
+  "description": "",
+  "main": "civitaigrabber.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnnythrash/civitaigrabber.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/johnnythrash/civitaigrabber/issues"
+  },
+  "homepage": "https://github.com/johnnythrash/civitaigrabber#readme",
+  "dependencies": {
+    "axios": "^1.10.0",
+    "csv-writer": "^1.6.0"
+  }
+}
