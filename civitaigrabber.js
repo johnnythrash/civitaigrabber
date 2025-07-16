@@ -1,4 +1,32 @@
 //REMINDER -- using doppler for secrets
+const axios = require("axios");
+const createCsvWriter = require("csv-writer").createObjectCsvWriter;
+const apiKey = process.env.CIVITAI_API_KEY;
+
+const headers = {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${apiKey}`,
+};
+
+const csvWriter = createCsvWriter({
+  path: "output.csv",
+  header: [
+    { id: "url", title: "URL" },
+    { id: "status", title: "Status" },
+    { id: "title", title: "Title" },
+    { id: "modelId", title: "Model ID" },
+    { id: "versionId", title: "Version ID" },
+    { id: "baseModel", title: "Base Model" },
+    { id: "trainedWords", title: "Trained Words" },
+    { id: "tags", title: "Tags" },
+    { id: "nsfw", title: "NSFW" },
+    { id: "description", title: "Description" },
+    { id: "image", title: "Image URL" },
+    { id: "downloadUrl", title: "Download URL" },
+    { id: "style", title: "Style" },
+    { id: "theme", title: "Theme" },
+  ],
+});
 
 const urls = [
   "https://civitai.com/models/1618540/illustration-factory?modelVersionId=1931631",
@@ -79,3 +107,148 @@ const urls = [
   "https://civitai.com/models/525200/alan-wake-cinematic-style-dark-style-xl-f1d",
   "https://civitai.com/models/753019/retro-anime-77r",
 ];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const categorizeTags = (tagsString) => {
+  if (!tagsString) return { style: "uncategorized", theme: "uncategorized" };
+  const tags = tagsString
+    .toLowerCase()
+    .split(",")
+    .map((t) => t.trim());
+  const styles = [
+    "retro",
+    "impressionism",
+    "cyberpunk",
+    "pixelart",
+    "minimal",
+    "vintage",
+    "film",
+    "digital",
+    "watercolor",
+    "comic",
+    "surrealism",
+    "photography",
+    "anime",
+    "realistic",
+    "3d",
+    "cartoon",
+    "portrait",
+    "character",
+    "people",
+    "person",
+  ];
+  const themes = [
+    "horror",
+    "fantasy",
+    "sci-fi",
+    "retro",
+    "portrait",
+    "gothic",
+    "dark",
+    "dnd",
+    "futuristic",
+  ];
+
+  const styleTags = [];
+  const themeTags = [];
+
+  for (const tag of tags) {
+    if (styles.some((s) => tag.includes(s))) styleTags.push(tag);
+    if (themes.some((th) => tag.includes(th))) themeTags.push(tag);
+  }
+
+  return {
+    style: styleTags.join(", ") || "uncategorized",
+    theme: themeTags.join(", ") || "uncategorized",
+  };
+};
+
+const scrape = async () => {
+  const records = [];
+
+  for (const url of urls) {
+    try {
+      console.log(`Processing ${url}`);
+      const modelId = url.match(/models\/(\d+)/)?.[1];
+      if (!modelId) throw new Error("Invalid model ID in URL");
+
+      // fetch versions list
+      const { data: modelData } = await axios.get(
+        `https://civitai.com/api/v1/models/${modelId}`,
+        { headers }
+      );
+      let versionToUse;
+
+      // try to find flux version by name or baseModel
+      versionToUse = modelData.modelVersions.find(
+        (v) =>
+          v.name?.toLowerCase().includes("flux") ||
+          v.baseModel?.toLowerCase().includes("flux")
+      );
+
+      // fallback to latest version if no flux found
+      if (!versionToUse) versionToUse = modelData.modelVersions[0];
+
+      if (!versionToUse) throw new Error("No versions found for model");
+
+      const versionId = versionToUse.id;
+
+      // fetch version details
+      const { data: versionData } = await axios.get(
+        `https://civitai.com/api/v1/model-versions/${versionId}`,
+        { headers }
+      );
+
+      const tagsString = modelData.tags.map((t) => t).join(", ") || "";
+
+      const cats = categorizeTags(tagsString);
+
+      records.push({
+        url,
+        status: 200,
+        title: versionData.model.name,
+        modelId,
+        versionId,
+        baseModel: versionData.baseModel,
+        trainedWords: versionData.trainedWords?.join(", ") || "",
+        tags: tagsString,
+        nsfw: versionData.model.nsfw,
+        description: versionData.description || "",
+        image: versionData.images[0]?.url || "",
+        downloadUrl: versionData.files[0]?.downloadUrl || "",
+        style: cats.style,
+        theme: cats.theme,
+      });
+
+      await sleep(300);
+    } catch (error) {
+      console.error(
+        `Error processing ${url}:`,
+        error.response?.status || error.message
+      );
+      records.push({
+        url,
+        status: error.response?.status || "error",
+        title: "",
+        modelId: "",
+        versionId: "",
+        baseModel: "",
+        trainedWords: "",
+        tags: "",
+        nsfw: "",
+        description: "",
+        image: "",
+        downloadUrl: "",
+        style: "uncategorized",
+        theme: "uncategorized",
+      });
+      await sleep(1000);
+    }
+  }
+
+  await csvWriter.writeRecords(records);
+  console.log("CSV written successfully.");
+};
+
+scrape();
