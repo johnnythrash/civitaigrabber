@@ -23,8 +23,7 @@ const csvWriter = createCsvWriter({
     { id: "description", title: "Description" },
     { id: "image", title: "Image URL" },
     { id: "downloadUrl", title: "Download URL" },
-    { id: "style", title: "Style" },
-    { id: "theme", title: "Theme" },
+    { id: "category", title: "Categories" },
   ],
 });
 
@@ -111,56 +110,34 @@ const urls = [
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const categorizeTags = (tagsString) => {
-  if (!tagsString) return { style: "uncategorized", theme: "uncategorized" };
+  if (!tagsString) return ["uncategorrized"];
   const tags = tagsString
     .toLowerCase()
     .split(",")
     .map((t) => t.trim());
-  const styles = [
-    "retro",
-    "impressionism",
-    "cyberpunk",
-    "pixelart",
-    "minimal",
-    "vintage",
-    "film",
-    "digital",
-    "watercolor",
-    "comic",
-    "surrealism",
-    "photography",
-    "anime",
-    "realistic",
-    "3d",
-    "cartoon",
-    "portrait",
+  const categories = [
     "character",
-    "people",
-    "person",
+    "style",
+    "concept",
+    "clothing",
+    "base model",
+    "poses",
+    "background",
+    "tool",
+    "vehicle",
+    "objects",
+    "assets",
+    "animal",
+    "action",
   ];
-  const themes = [
-    "horror",
-    "fantasy",
-    "sci-fi",
-    "retro",
-    "portrait",
-    "gothic",
-    "dark",
-    "dnd",
-    "futuristic",
-  ];
-
-  const styleTags = [];
-  const themeTags = [];
+  const category = [];
 
   for (const tag of tags) {
-    if (styles.some((s) => tag.includes(s))) styleTags.push(tag);
-    if (themes.some((th) => tag.includes(th))) themeTags.push(tag);
+    if (categories.some((s) => tag.includes(s))) category.push(tag);
   }
 
   return {
-    style: styleTags.join(", ") || "uncategorized",
-    theme: themeTags.join(", ") || "uncategorized",
+    category: category.join(", ") || "uncategorized",
   };
 };
 
@@ -203,7 +180,7 @@ const scrape = async () => {
       const tagsString = modelData.tags.map((t) => t).join(", ") || "";
 
       const cats = categorizeTags(tagsString);
-
+      console.log(cats.category);
       records.push({
         url,
         status: 200,
@@ -217,8 +194,7 @@ const scrape = async () => {
         description: versionData.description || "",
         image: versionData.images[0]?.url || "",
         downloadUrl: versionData.files[0]?.downloadUrl || "",
-        style: cats.style,
-        theme: cats.theme,
+        category: cats.category || "",
       });
 
       await sleep(300);
@@ -240,8 +216,7 @@ const scrape = async () => {
         description: "",
         image: "",
         downloadUrl: "",
-        style: "uncategorized",
-        theme: "uncategorized",
+        category: "uncategorized",
       });
       await sleep(1000);
     }
