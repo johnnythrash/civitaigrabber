@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 # csv
 *.csv
+
+# mac crap
+.DS*
